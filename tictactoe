@@ -35,10 +35,8 @@ def parse_to_integer_pair(input_str):
         return None
 
 
-def fails_boundaries(move):
+def fails_boundaries(input_row,input_col):
     rtnval=False
-    input_row=move[0]
-    input_col=move[1]
     legal_idx_range=set(range(0,3))
     coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
     return not coordinates_within_bounds
@@ -52,7 +50,7 @@ def occupied_square(move,board):
 
 def grid_iter(y_step,x_step,starting_posn):
     cur_posn=starting_posn
-    while not fails_boundaries(cur_posn):
+    while not fails_boundaries(*cur_posn):
         yield cur_posn
         cur_posn=(cur_posn[0]+y_step,cur_posn[1]+x_step)
 
@@ -93,7 +91,7 @@ def get_valid_move(board):
     while not valid_move:
         if not move:
             move=parse_to_integer_pair(raw_input("I cannot parse your move into coordinates, try again\n"))
-        elif fails_boundaries(move):
+        elif fails_boundaries(*move):
             move=parse_to_integer_pair(raw_input("Previous move was off the board, try again\n"))
         elif occupied_square(move,board):
             move=parse_to_integer_pair(raw_input("Prevoius move was in an occupied place, try again\n"))
