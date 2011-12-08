@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import re
 
 def print_board(board):
     for rw in board:
@@ -17,50 +18,97 @@ def num_to_avatar(n):
     else:
         raise ValueError("The board contains numbers outside {-1,0,1}")
 
-def is_number(s):
-    try:
-        n=int(s)
-    except ValueError:
-        return False
-    return True
-
-def groom_raw_move(move_str):
-    casted_to_tuple=tuple([int(i) for i in move_str if is_number(i)])
-    if len(casted_to_tuple)==2:
-        #this is the good case
-        return casted_to_tuple
+#def is_number(s):
+    #try:
+        #n=int(s)
+    #except ValueError:
+        #return False
+    #return True
+def parse_to_integer_pair(input_str):
+    num_regex=re.compile(r'[0-9]+')
+    matches=num_regex.findall(input_str)
+    #print "input is {0}".format(input_str)
+    #print "matches are {0}".format(matches)
+    if len(matches)==2:
+        return tuple([int(m) for m in matches])
     else:
         return None
 
 
-def prompt_move(input_str):
-    raw_move=raw_input(input_str)
-    return groom_raw_move(raw_move)
-
-def is_valid_move(move,board):
+def fails_boundaries(move):
     rtnval=False
-    if move:
-        input_row=move[0]
-        input_col=move[1]
-        legal_idx_range=set(range(-1,2))
-        coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
-        if coordinates_within_bounds:
-            spot_unoccupied=board[input_row][input_col]==0
-            if spot_unoccupied:
-                rtnval=True
-    return rtnval
+    input_row=move[0]
+    input_col=move[1]
+    legal_idx_range=set(range(0,3))
+    coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
+    return not coordinates_within_bounds
+
+def occupied_square(move,board):
+    rtnval=False
+    input_row=move[0]
+    input_col=move[1]
+    spot_unoccupied=board[input_row][input_col]==0
+    return not spot_unoccupied
+
+def grid_iter(y_step,x_step,starting_posn):
+    cur_posn=starting_posn
+    while not fails_boundaries(cur_posn):
+        yield cur_posn
+        cur_posn=(cur_posn[0]+y_step,cur_posn[1]+x_step)
+
+def winner_on_path(path_generator,board):
+    frst_coord=path_generator.next()
+    frst_val=board[frst_coord[0]][frst_coord[1]]
+    is_winner=True
+    for coord in path_generator:
+        cur_val=board[coord[0]][coord[1]]
+        if cur_val!=frst_val:
+            is_winner=False
+    if is_winner:
+        return board[frst_coord[0]][frst_coord[1]]
+    else:
+        return 0
+
+def winner_on_board(board):
+    #TODO: exception handling - this currently assumes
+    #that there is exactly one winner
+    col_paths=[grid_iter(1,0,(0,x)) for x in range(2)]
+    row_paths=[grid_iter(0,1,(y,0)) for y in range(2)]
+    diagonal_paths=[grid_iter(1,1,(0,0)),grid_iter(-1,1,(2,0))]
+    winner=0
+    for p in col_paths+row_paths+diagonal_paths:
+        p_winner=winner_on_path(p,board)
+        if p_winner!=0:
+            winner=p_winner
+            break
+    return winner
+
+
 
 
 def get_valid_move(board):
     #prompt for initial input
-    move_tuple=prompt_move("Please enter your move\n")
-    while not is_valid_move(move_tuple,board):
-        move_tuple=prompt_move("Previous move was in an occupied spot or off the board, try again\n")
-    return move_tuple
+    move=parse_to_integer_pair(raw_input("Please enter your move\n"))
+    valid_move=False
+    while not valid_move:
+        if not move:
+            move=parse_to_integer_pair(raw_input("I cannot parse your move into coordinates, try again\n"))
+        elif fails_boundaries(move):
+            move=parse_to_integer_pair(raw_input("Previous move was off the board, try again\n"))
+        elif occupied_square(move,board):
+            move=parse_to_integer_pair(raw_input("Prevoius move was in an occupied place, try again\n"))
+        else:
+            valid_move=True
+    return move
 
 
 if __name__=="__main__":
-    dummy_board=[range(-1,2) for x in range(3)]
-    #print_board(dummy_board)
-    print get_valid_move(dummy_board)
+    #dummy_board=[[1, 0, 0],[0,1,0],[0,0,1]]
+    dummy_board=[[0,-1,0],
+                [0,-1,0],
+                [0,-1,0]
+                ]
+
+    print_board(dummy_board)
+    print winner_on_board(dummy_board)
 
