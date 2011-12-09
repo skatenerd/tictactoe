@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import re
+import itertools
 
 def print_board(board):
     for rw in board:
@@ -18,60 +19,48 @@ def num_to_avatar(n):
     else:
         raise ValueError("The board contains numbers outside {-1,0,1}")
 
-#def is_number(s):
-    #try:
-        #n=int(s)
-    #except ValueError:
-        #return False
-    #return True
 def parse_to_integer_pair(input_str):
     num_regex=re.compile(r'[0-9]+')
     matches=num_regex.findall(input_str)
-    #print "input is {0}".format(input_str)
-    #print "matches are {0}".format(matches)
     if len(matches)==2:
         return tuple([int(m) for m in matches])
     else:
         return None
 
-
-def fails_boundaries(input_row,input_col):
+def fails_boundaries((input_row,input_col)):
     rtnval=False
     legal_idx_range=set(range(0,3))
     coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
     return not coordinates_within_bounds
 
-def occupied_square(move,board):
+def occupied_square((input_row,input_col),board):
     rtnval=False
-    input_row=move[0]
-    input_col=move[1]
-    spot_unoccupied=board[input_row][input_col]==0
-    return not spot_unoccupied
+    return (board[input_row][input_col]!=0)
 
 def grid_iter(y_step,x_step,starting_posn):
     cur_posn=starting_posn
-    while not fails_boundaries(*cur_posn):
+    while not fails_boundaries(cur_posn):
         yield cur_posn
         cur_posn=(cur_posn[0]+y_step,cur_posn[1]+x_step)
 
 def winner_on_path(path_generator,board):
-    frst_coord=path_generator.next()
-    frst_val=board[frst_coord[0]][frst_coord[1]]
+    (frst_y,frst_x)=path_generator.next()
+    frst_val=board[frst_y][frst_x]
     is_winner=True
-    for coord in path_generator:
-        cur_val=board[coord[0]][coord[1]]
+    for (cur_y,cur_x) in path_generator:
+        cur_val=board[cur_y][cur_x]
         if cur_val!=frst_val:
             is_winner=False
-    if is_winner:
-        return board[frst_coord[0]][frst_coord[1]]
+    if is_winner and frst_val != 0:
+        return frst_val
     else:
         return 0
 
 def winner_on_board(board):
     #TODO: exception handling - this currently assumes
     #that there is exactly one winner
-    col_paths=[grid_iter(1,0,(0,x)) for x in range(2)]
-    row_paths=[grid_iter(0,1,(y,0)) for y in range(2)]
+    col_paths=[grid_iter(1,0,(0,x)) for x in range(3)]
+    row_paths=[grid_iter(0,1,(y,0)) for y in range(3)]
     diagonal_paths=[grid_iter(1,1,(0,0)),grid_iter(-1,1,(2,0))]
     winner=0
     for p in col_paths+row_paths+diagonal_paths:
@@ -81,9 +70,6 @@ def winner_on_board(board):
             break
     return winner
 
-
-
-
 def get_valid_move(board):
     #prompt for initial input
     move=parse_to_integer_pair(raw_input("Please enter your move\n"))
@@ -91,7 +77,7 @@ def get_valid_move(board):
     while not valid_move:
         if not move:
             move=parse_to_integer_pair(raw_input("I cannot parse your move into coordinates, try again\n"))
-        elif fails_boundaries(*move):
+        elif fails_boundaries(move):
             move=parse_to_integer_pair(raw_input("Previous move was off the board, try again\n"))
         elif occupied_square(move,board):
             move=parse_to_integer_pair(raw_input("Prevoius move was in an occupied place, try again\n"))
@@ -99,14 +85,83 @@ def get_valid_move(board):
             valid_move=True
     return move
 
+def player_goal_fn(player):
+    assert player in [-1,1]
+    if player==1:
+        return max
+    else:
+        return min
+
+def other_player(player):
+    return player * -1
+
+def remaining_moves(board):
+    return [(y,x) for (y,x) in itertools.product(range(3),range(3)) if board[y][x]==0]
+
+def commit_move(board,(move_y,move_x),player):
+    assert (move_y,move_x) in remaining_moves(board), "committing move to occupied square"
+    assert type(board)==tuple
+    board_as_list=map(lambda row:list(row),board)
+    board_as_list[move_y][move_x]=player
+    new_board=tuple(map(lambda row:tuple(row),board_as_list))
+    return new_board
+   
+
+
+def score_posn(board,player,score_dictionary):
+    if (board,player) in score_dictionary:
+        return score_dictionary[(board,player)]
+    else:
+        rtn_score=None
+        game_winner=winner_on_board(board)
+        if game_winner!=0:
+            rtn_score=game_winner
+        else:
+            goal_fn=player_goal_fn(player)
+            for m in remaining_moves(board):
+                result_board=commit_move(board,m,player)
+                cur_score=score_posn(result_board,other_player(player),score_dictionary)
+                if rtn_score!=None:
+                    rtn_score=goal_fn(rtn_score,cur_score)
+                else:
+                    rtn_score=cur_score
+        if not rtn_score:
+            rtn_score=0
+        score_dictionary[(board,player)]=rtn_score
+        return rtn_score
+
 
 if __name__=="__main__":
-    #dummy_board=[[1, 0, 0],[0,1,0],[0,0,1]]
-    dummy_board=[[0,-1,0],
-                [0,-1,0],
-                [0,-1,0]
-                ]
+    test_board_0=(( 1, 0, 0),
+                  ( 0, 1, 0),
+                  ( 0, 0, 1))
+    test_board_1=(( 1, 1, 1),
+                  ( 0,-1, 0),
+                  (-1, 0, 0))
+    test_board_2=(( 0,-1, 0),
+                  ( 0,-1, 0),
+                  ( 0,-1, 0))
+    test_board_3=(( 0, 1, 0),
+                  ( 0, 0, 0),
+                  ( 0,-1, 0))
+    test_board_4=((-1,-1, 1),
+                  ( 1, 0, 0),
+                  (-1, 1, 0))
+    test_board_5=((-1,-1, 1),
+                  ( 1, 1, 0),
+                  (-1,-1,-1))
+    test_board_6=(( 0, 0, 0),
+                  ( 0, 0, 0),
+                  ( 0,-1, 0))
 
-    print_board(dummy_board)
-    print winner_on_board(dummy_board)
-
+    #print winner_on_board(test_board_0)
+    #print winner_on_board(test_board_1)
+    #print winner_on_board(test_board_2)
+    #print score_posn(test_board_2,-1,{})
+    #print score_posn(test_board_3,-1,{})
+    #print score_posn(test_board_3,1,{})
+    #move_input=get_valid_move(test_board_0)
+    #print_board(commit_move(test_board_0,move_input,-1))
+    print score_posn(test_board_4,1,{})
+    print score_posn(test_board_3,1,{})
+    print score_posn(test_board_6,1,{})
