@@ -3,9 +3,136 @@ import re
 import itertools
 
 class tic_tac_toe_board:
+    #scores of various board positions
     score_dict={}
-    def __init__():
-        board=((0,0,0)*3)
+    
+    
+    def __init__(self,board=(0,0,0)*3):
+        self.board=board
+
+    def remaining_moves(self):
+        """
+        what squares haven't filled up yet?
+        """
+        return [(y,x) for (y,x) in itertools.product(range(3),range(3)) if self.board[y][x]==0]
+
+    def fails_boundaries(self,(input_row,input_col)):
+        rtnval=False
+        legal_idx_range=set(range(0,3))
+        coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
+        return not coordinates_within_bounds
+    
+    def commit_move(self,(move_y,move_x),player):
+        """
+        Return a fresh board, which looks like the previous board after
+        "player" has applied "(move_y,move_x)"
+        this is kind of ugly.  i'm not sure how to avoid casting to a list of lists..
+        """
+        assert (move_y,move_x) in self.remaining_moves(), "committing move to occupied square"
+        board_as_list=map(lambda row:list(row),self.board)
+        board_as_list[move_y][move_x]=player
+        new_board=tuple(map(lambda row:tuple(row),board_as_list))
+        return tic_tac_toe_board(new_board)
+    def grid_path_generator(self,y_step,x_step,starting_posn):
+        """
+        produces a generator which yields a sequence of positions on the board.
+        this is useful for determining whether there is a winner on the board.
+        if you want to check for a winner in the first row, you can "walk down" the first row
+        making sure that every resident of that row is identical
+        """
+        cur_posn=starting_posn
+        while not self.fails_boundaries(cur_posn):
+            yield cur_posn
+            cur_posn=(cur_posn[0]+y_step,cur_posn[1]+x_step)
+
+    def winner_on_path(self,path):
+        """
+        walk along the provided path, seeing if a winning-triplet
+        lives on this path.  we require that all three numbers are
+        equal and nonzero.
+        """
+        (frst_y,frst_x)=path.next()
+        frst_val=self.board[frst_y][frst_x]
+        path_residents_identical=True
+        for (cur_y,cur_x) in path:
+            cur_val=self.board[cur_y][cur_x]
+            if cur_val!=frst_val:
+                path_residents_identical=False
+        if path_residents_identical and frst_val != 0:
+            return frst_val
+        else:
+            return 0
+    
+    def winner_on_board(self):
+        """
+        does the current board contain a winner (should this game end)?
+        generate all of the possible win-paths, and walk down each one,
+        checking for a winner
+        """
+        col_paths=[self.grid_path_generator(1,0,(0,x)) for x in range(3)]
+        row_paths=[self.grid_path_generator(0,1,(y,0)) for y in range(3)]
+        diagonal_paths=[self.grid_path_generator(1,1,(0,0)),self.grid_path_generator(-1,1,(2,0))]
+        winner=0
+        for p in col_paths+row_paths+diagonal_paths:
+            p_winner=self.winner_on_path(p)
+            if p_winner!=0:
+                winner=p_winner
+                break
+        return winner
+    def is_occupied_square((input_row,input_col)):
+        return (self.board[input_row][input_col]!=0)
+    def score_move(self,(move,player)):
+        """
+        if "player" committed "move", what would the score of the
+        resulting board be?
+        """
+        result_board=self.commit_move(move,player)
+        return result_board.score_posn(other_player(player))
+    
+    def record_score(self,player,score):
+        """
+        this is just a wrapper to make the code read more like english
+        and to handle assertion-checking
+        """
+        if (self.board,player) in self.score_dict:
+            assert self.score_dict[(self.board,player)]==score
+        else:
+            self.score_dict[(self.board,player)]=score
+    
+    def score_posn(self,player):
+        """
+        What is the "score" of the current board?
+        see above for an explanation of what "score" means
+        Note that we are using a dictionary object to avoid extra work
+        """
+        cur_winner=self.winner_on_board()
+        if cur_winner!=0:
+            #first obvious check - is the game over?
+            self.record_score(player,cur_winner)
+            return cur_winner
+        elif len(self.remaining_moves())==0 and cur_winner==0:
+            #nobody can move, and there is no winner.  stale mate.
+            return 0
+        elif (self.board,player) in self.score_dict:
+            #we've already memorized this into the score dictionary!
+            return self.score_dict[(board,player)]
+        else:
+            #all of the obvious checks have yielded no results.
+            #so, find the next move yielding maximal (or minimal) score
+            cur_remaining_moves=self.remaining_moves()
+            num_remaining_moves=len(cur_remaining_moves)
+            goal_fn=player_goal_fn(player)
+    
+            #suppose we are the score-minimizing player.
+            #we want to figure out how small we can make
+            #the score of the resulting move
+            rtn_score=goal_fn(map(self.score_move,
+                                zip(cur_remaining_moves,
+                                    (player,)*num_remaining_moves)))
+            self.record_score(player,rtn_score)
+            return rtn_score
+
+
 
 
     
@@ -46,55 +173,7 @@ def fails_boundaries((input_row,input_col)):
     return not coordinates_within_bounds
 
 def is_occupied_square((input_row,input_col),board):
-    rtnval=False
     return (board[input_row][input_col]!=0)
-
-def grid_path_generator(y_step,x_step,starting_posn):
-    """
-    produces a generator which yields a sequence of positions on the board.
-    this is useful for determining whether there is a winner on the board.
-    if you want to check for a winner in the first row, you can "walk down" the first row
-    making sure that every resident of that row is identical
-    """
-    cur_posn=starting_posn
-    while not fails_boundaries(cur_posn):
-        yield cur_posn
-        cur_posn=(cur_posn[0]+y_step,cur_posn[1]+x_step)
-
-def winner_on_path(path,board):
-    """
-    walk along the provided path, seeing if a winning-triplet
-    lives on this path.  we require that all three numbers are
-    equal and nonzero.
-    """
-    (frst_y,frst_x)=path.next()
-    frst_val=board[frst_y][frst_x]
-    path_residents_identical=True
-    for (cur_y,cur_x) in path:
-        cur_val=board[cur_y][cur_x]
-        if cur_val!=frst_val:
-            path_residents_identical=False
-    if path_residents_identical and frst_val != 0:
-        return frst_val
-    else:
-        return 0
-
-def winner_on_board(board):
-    """
-    does the current board contain a winner (should this game end)?
-    generate all of the possible win-paths, and walk down each one,
-    checking for a winner
-    """
-    col_paths=[grid_path_generator(1,0,(0,x)) for x in range(3)]
-    row_paths=[grid_path_generator(0,1,(y,0)) for y in range(3)]
-    diagonal_paths=[grid_path_generator(1,1,(0,0)),grid_path_generator(-1,1,(2,0))]
-    winner=0
-    for p in col_paths+row_paths+diagonal_paths:
-        p_winner=winner_on_path(p,board)
-        if p_winner!=0:
-            winner=p_winner
-            break
-    return winner
 
 def prompt_valid_move(board):
     """
@@ -108,7 +187,7 @@ def prompt_valid_move(board):
             move=parse_to_integer_pair(raw_input("I cannot parse your move into coordinates, try again\n"))
         elif fails_boundaries(move):
             move=parse_to_integer_pair(raw_input("Previous move was off the board, try again\n"))
-        elif is_occupied_square(move,board):
+        elif board.is_occupied_square(move):
             move=parse_to_integer_pair(raw_input("Prevoius move was in an occupied place, try again\n"))
         else:
             valid_move=True
@@ -130,77 +209,6 @@ def other_player(player):
     #...
     return player * -1
 
-def remaining_moves(board):
-    """
-    what squares haven't filled up yet?
-    """
-    return [(y,x) for (y,x) in itertools.product(range(3),range(3)) if board[y][x]==0]
-
-def commit_move(board,(move_y,move_x),player):
-    """
-    Return a fresh board, which looks like the previous board after
-    "player" has applied "(move_y,move_x)"
-    this is kind of ugly.  i'm not sure how to avoid casting to a list of lists..
-    """
-    assert (move_y,move_x) in remaining_moves(board), "committing move to occupied square"
-    assert type(board)==tuple, "how did the board become mutable?"
-    board_as_list=map(lambda row:list(row),board)
-    board_as_list[move_y][move_x]=player
-    new_board=tuple(map(lambda row:tuple(row),board_as_list))
-    return new_board
-   
-def score_move((move,player,board,score_dictionary)):
-    """
-    if "player" committed "move", what would the score of the
-    resulting board be?
-    """
-    result_board=commit_move(board,move,player)
-    return score_posn(result_board,other_player(player),score_dictionary)
-
-def record_score((board,player),score_dictionary,score):
-    """
-    this is just a wrapper to make the code read more like english
-    and to handle assertion-checking
-    """
-    if (board,player) in score_dictionary:
-        assert score_dictionary[(board,player)]==score
-    else:
-        score_dictionary[(board,player)]=score
-
-def score_posn(board,player,score_dictionary):
-    """
-    What is the "score" of the current board?
-    see above for an explanation of what "score" means
-    Note that we are using a dictionary object to avoid extra work
-    """
-    cur_winner=winner_on_board(board)
-    if cur_winner!=0:
-        #first obvious check - is the game over?
-        record_score((board,player),score_dictionary,cur_winner)
-        return cur_winner
-    elif len(remaining_moves(board))==0 and cur_winner==0:
-        #nobody can move, and there is no winner.  stale mate.
-        return 0
-    elif (board,player) in score_dictionary:
-        #we've already memorized this into the score dictionary!
-        return score_dictionary[(board,player)]
-    else:
-        #all of the obvious checks have yielded no results.
-        #so, find the next move yielding maximal (or minimal) score
-        cur_remaining_moves=remaining_moves(board)
-        num_remaining_moves=len(cur_remaining_moves)
-        goal_fn=player_goal_fn(player)
-
-        #suppose we are the score-minimizing player.
-        #we want to figure out how small we can make
-        #the score of the resulting move
-        rtn_score=goal_fn(map(score_move,
-                            zip(cur_remaining_moves,
-                                (player,)*num_remaining_moves,
-                                (board,)*num_remaining_moves,
-                                (score_dictionary,)*num_remaining_moves)))
-        record_score((board,player),score_dictionary,rtn_score)
-        return rtn_score
 
 
 if __name__=="__main__":
@@ -227,7 +235,7 @@ if __name__=="__main__":
                   (-1, 1, 0))
     test_board_5=((-1,-1, 1),
                   ( 1, 1, 0),
-                  (-1,-1,-1))
+                  (-1,-1, 1))
     test_board_6=(( 0, 0, 0),
                   ( 0, 0, 0),
                   ( 0,-1, 0))
@@ -240,15 +248,21 @@ if __name__=="__main__":
     #print score_posn(test_board_3,1,{})
     #move_input=prompt_valid_move(test_board_0)
     #print_board(commit_move(test_board_0,move_input,-1))
-    print score_posn(test_board_4,1,{})
-    print score_posn(test_board_4,-1,{})
-    print score_posn(test_board_3,1,{})
-    print score_posn(test_board_6,1,{})
-    d={}
-    e={}
-    import time as t
-    print score_posn(empty_board,1,d)
-    print score_posn(empty_board,-1,e)
-    print len(d)
-    print d[(test_board_4,1)]
-    print e[(test_board_4,-1)]
+    board_4=tic_tac_toe_board(test_board_4)
+    print board_4.score_posn(1)
+    print board_4.score_posn(-1)
+
+    board_5=tic_tac_toe_board(test_board_5)
+    print board_5.score_posn(1)
+    print board_5.score_posn(-1)
+    #print score_posn(test_board_4,-1,{})
+    #print score_posn(test_board_3,1,{})
+    #print score_posn(test_board_6,1,{})
+    #d={}
+    #e={}
+    #import time as t
+    #print score_posn(empty_board,1,d)
+    #print score_posn(empty_board,-1,e)
+    #print len(d)
+    #print d[(test_board_4,1)]
+    #print e[(test_board_4,-1)]
