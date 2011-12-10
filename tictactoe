@@ -255,6 +255,7 @@ if __name__=="__main__":
     board_5=tic_tac_toe_board(test_board_5)
     print board_5.score_posn(1)
     print board_5.score_posn(-1)
+    print board_5.score_dict
     #print score_posn(test_board_4,-1,{})
     #print score_posn(test_board_3,1,{})
     #print score_posn(test_board_6,1,{})
