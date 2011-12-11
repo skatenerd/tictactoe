@@ -1,13 +1,14 @@
 #!/usr/bin/python
 import re
 import itertools
+import random
 
 class tic_tac_toe_board:
     #scores of various board positions
     score_dict={}
     
     
-    def __init__(self,board=(0,0,0)*3):
+    def __init__(self,board=((0,0,0),(0,0,0),(0,0,0))):
         self.board=board
 
     def remaining_moves(self):
@@ -79,8 +80,9 @@ class tic_tac_toe_board:
                 winner=p_winner
                 break
         return winner
-    def is_occupied_square((input_row,input_col)):
+    def is_occupied_square(self,(input_row,input_col)):
         return (self.board[input_row][input_col]!=0)
+
     def score_move(self,(move,player)):
         """
         if "player" committed "move", what would the score of the
@@ -88,6 +90,13 @@ class tic_tac_toe_board:
         """
         result_board=self.commit_move(move,player)
         return result_board.score_posn(other_player(player))
+
+    def best_next_move(self,player):
+        cur_posn_score=self.score_posn(player)
+        for m in self.remaining_moves():
+            if self.score_move((m,player))==cur_posn_score:
+                return m
+
     
     def record_score(self,player,score):
         """
@@ -110,12 +119,15 @@ class tic_tac_toe_board:
             #first obvious check - is the game over?
             self.record_score(player,cur_winner)
             return cur_winner
-        elif len(self.remaining_moves())==0 and cur_winner==0:
+        elif len(self.remaining_moves())==0:
             #nobody can move, and there is no winner.  stale mate.
+            return 0
+        elif len(self.remaining_moves()) >8:
+            #you can't lose after two moves.....
             return 0
         elif (self.board,player) in self.score_dict:
             #we've already memorized this into the score dictionary!
-            return self.score_dict[(board,player)]
+            return self.score_dict[(self.board,player)]
         else:
             #all of the obvious checks have yielded no results.
             #so, find the next move yielding maximal (or minimal) score
@@ -131,18 +143,15 @@ class tic_tac_toe_board:
                                     (player,)*num_remaining_moves)))
             self.record_score(player,rtn_score)
             return rtn_score
+    def __str__(self):
+        rtn_str="\n".join(["|"+"|".join([num_to_avatar(n) for n in row])+"|" for row in self.board])
+        return rtn_str
 
 
 
 
     
 
-def print_board(board):
-    for rw in board:
-        print_row(rw)
-
-def print_row(row):
-    print ("|"+"|".join([num_to_avatar(n) for n in row])+"|")
 
 def num_to_avatar(n):
     if n==-1:
@@ -166,15 +175,6 @@ def parse_to_integer_pair(input_str):
     else:
         return None
 
-def fails_boundaries((input_row,input_col)):
-    rtnval=False
-    legal_idx_range=set(range(0,3))
-    coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
-    return not coordinates_within_bounds
-
-def is_occupied_square((input_row,input_col),board):
-    return (board[input_row][input_col]!=0)
-
 def prompt_valid_move(board):
     """
     extract meaningful input from user.  keep trying until something
@@ -185,7 +185,7 @@ def prompt_valid_move(board):
     while not valid_move:
         if not move:
             move=parse_to_integer_pair(raw_input("I cannot parse your move into coordinates, try again\n"))
-        elif fails_boundaries(move):
+        elif board.fails_boundaries(move):
             move=parse_to_integer_pair(raw_input("Previous move was off the board, try again\n"))
         elif board.is_occupied_square(move):
             move=parse_to_integer_pair(raw_input("Prevoius move was in an occupied place, try again\n"))
@@ -208,6 +208,37 @@ def player_goal_fn(player):
 def other_player(player):
     #...
     return player * -1
+
+def run_game():
+    print "welcome.  you will enter your moves in ZERO-INDEXEXD ROW,COLUMN format."
+    print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
+    print "this is NOT the same as the x,y coordinates of your childhood\n\n"
+    #the "O" player always goes first.
+    #depending on the random number roll, the player goes first as "O"
+    #or second as "X"
+    human_team=1 if random.random() > .5 else -1
+    computer_team=other_player(human_team)
+    print ("we have chosen randomly for you."+
+          "you will move {0} and play as {1}.".format("first" if human_team==1 else "second",
+                                                      "\""+str(num_to_avatar(human_team)+"\"")))
+    cur_player=1
+    cur_board=tic_tac_toe_board()
+    while not cur_board.winner_on_board() and len(cur_board.remaining_moves())>0:
+        if cur_player==human_team:
+            move=prompt_valid_move(cur_board)
+        else:
+            move=cur_board.best_next_move(cur_player)
+            print "computer has chosen {0}".format(move)
+        cur_board=cur_board.commit_move(move,cur_player)
+        print cur_board
+        print "\n"
+        cur_player=other_player(cur_player)                                                                                       
+
+    if cur_board.winner_on_board()==computer_team:
+        print "i win!"
+    else:
+        print "we tied.  you must be brilliant"
+          
 
 
 
@@ -240,14 +271,6 @@ if __name__=="__main__":
                   ( 0, 0, 0),
                   ( 0,-1, 0))
 
-    #print winner_on_board(test_board_0)
-    #print winner_on_board(test_board_1)
-    #print winner_on_board(test_board_2)
-    #print score_posn(test_board_2,-1,{})
-    #print score_posn(test_board_3,-1,{})
-    #print score_posn(test_board_3,1,{})
-    #move_input=prompt_valid_move(test_board_0)
-    #print_board(commit_move(test_board_0,move_input,-1))
     board_4=tic_tac_toe_board(test_board_4)
     print board_4.score_posn(1)
     print board_4.score_posn(-1)
@@ -255,15 +278,6 @@ if __name__=="__main__":
     board_5=tic_tac_toe_board(test_board_5)
     print board_5.score_posn(1)
     print board_5.score_posn(-1)
-    print board_5.score_dict
-    #print score_posn(test_board_4,-1,{})
-    #print score_posn(test_board_3,1,{})
-    #print score_posn(test_board_6,1,{})
-    #d={}
-    #e={}
-    #import time as t
-    #print score_posn(empty_board,1,d)
-    #print score_posn(empty_board,-1,e)
-    #print len(d)
-    #print d[(test_board_4,1)]
-    #print e[(test_board_4,-1)]
+    board_6=tic_tac_toe_board(test_board_6)
+    print board_6.score_posn(1)
+    run_game()
