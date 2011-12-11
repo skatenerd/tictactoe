@@ -172,6 +172,8 @@ def parse_to_integer_pair(input_str):
     matches=num_regex.findall(input_str)
     if len(matches)==2:
         return tuple([int(m) for m in matches])
+    elif len(matches)==1 and len(matches[0])==2:
+        return(int(matches[0])/10,int(matches[0])%10)
     else:
         return None
 
@@ -210,7 +212,7 @@ def other_player(player):
     return player * -1
 
 def run_game():
-    print "welcome.  you will enter your moves in ZERO-INDEXEXD ROW,COLUMN format."
+    print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXEXD ROW,COLUMN format."
     print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
     print "this is NOT the same as the x,y coordinates of your childhood\n\n"
     #the "O" player always goes first.
@@ -271,13 +273,13 @@ if __name__=="__main__":
                   ( 0, 0, 0),
                   ( 0,-1, 0))
 
-    board_4=tic_tac_toe_board(test_board_4)
-    print board_4.score_posn(1)
-    print board_4.score_posn(-1)
-
-    board_5=tic_tac_toe_board(test_board_5)
-    print board_5.score_posn(1)
-    print board_5.score_posn(-1)
-    board_6=tic_tac_toe_board(test_board_6)
-    print board_6.score_posn(1)
+    #board_4=tic_tac_toe_board(test_board_4)
+    #print board_4.score_posn(1)
+    #print board_4.score_posn(-1)
+#
+    #board_5=tic_tac_toe_board(test_board_5)
+    #print board_5.score_posn(1)
+    #print board_5.score_posn(-1)
+    #board_6=tic_tac_toe_board(test_board_6)
+    #print board_6.score_posn(1)
     run_game()
