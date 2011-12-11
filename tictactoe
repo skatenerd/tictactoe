@@ -89,7 +89,7 @@ class tic_tac_toe_board:
         resulting board be?
         """
         result_board=self.commit_move(move,player)
-        return result_board.score_posn(other_player(player))
+        return result_board.score_posn(self.other_player(player))
 
     def best_next_move(self,player):
         cur_posn_score=self.score_posn(player)
@@ -133,7 +133,7 @@ class tic_tac_toe_board:
             #so, find the next move yielding maximal (or minimal) score
             cur_remaining_moves=self.remaining_moves()
             num_remaining_moves=len(cur_remaining_moves)
-            goal_fn=player_goal_fn(player)
+            goal_fn=self.player_goal_fn(player)
     
             #suppose we are the score-minimizing player.
             #we want to figure out how small we can make
@@ -147,7 +147,21 @@ class tic_tac_toe_board:
         rtn_str="\n".join(["|"+"|".join([num_to_avatar(n) for n in row])+"|" for row in self.board])
         return rtn_str
 
+    def player_goal_fn(self,player):
+        """
+        As described above, one player wants to maximize the score
+        on the grid, and the other player wants to minimize the score.
+        so, player 1's "goal" corresponds to the function max
+        """
+        assert player in [-1,1]
+        if player==1:
+            return max
+        else:
+            return min
 
+    def other_player(self,player):
+        #...
+        return player * -1
 
 
     
@@ -195,21 +209,7 @@ def prompt_valid_move(board):
             valid_move=True
     return move
 
-def player_goal_fn(player):
-    """
-    As described above, one player wants to maximize the score
-    on the grid, and the other player wants to minimize the score.
-    so, player 1's "goal" corresponds to the function max
-    """
-    assert player in [-1,1]
-    if player==1:
-        return max
-    else:
-        return min
 
-def other_player(player):
-    #...
-    return player * -1
 
 def run_game():
     print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXEXD ROW,COLUMN format."
@@ -218,13 +218,13 @@ def run_game():
     #the "O" player always goes first.
     #depending on the random number roll, the player goes first as "O"
     #or second as "X"
+    cur_board=tic_tac_toe_board()
     human_team=1 if random.random() > .5 else -1
-    computer_team=other_player(human_team)
+    computer_team=cur_board.other_player(human_team)
     print ("we have chosen randomly for you."+
           "you will move {0} and play as {1}.".format("first" if human_team==1 else "second",
                                                       "\""+str(num_to_avatar(human_team)+"\"")))
     cur_player=1
-    cur_board=tic_tac_toe_board()
     while not cur_board.winner_on_board() and len(cur_board.remaining_moves())>0:
         if cur_player==human_team:
             move=prompt_valid_move(cur_board)
@@ -234,7 +234,7 @@ def run_game():
         cur_board=cur_board.commit_move(move,cur_player)
         print cur_board
         print "\n"
-        cur_player=other_player(cur_player)                                                                                       
+        cur_player=cur_board.other_player(cur_player)                                                                                       
 
     if cur_board.winner_on_board()==computer_team:
         print "i win!"
