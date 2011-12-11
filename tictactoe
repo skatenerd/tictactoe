@@ -247,7 +247,7 @@ def prompt_valid_move(board):
 
 
 def run_game():
-    print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXEXD ROW,COLUMN format."
+    print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXED ROW,COLUMN format."
     print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
     print "this is NOT the same as the x,y coordinates of your childhood\n\n"
     cur_board=tic_tac_toe_board()
