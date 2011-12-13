@@ -3,7 +3,18 @@ import re
 import itertools
 import random
 
-class tic_tac_toe_board:
+class Square:
+    HUMAN=-1
+    AI=1
+    BLANK=0
+    #def __init__(self,contents=BLANK):
+        #self.contents=contents
+    @staticmethod
+    def other_player(p):
+        return p*-1
+
+
+class TicTacToeBoard:
     """
     This models a snapshot of a tic tac toe board.  The indended use is for the
     consumer to build a new board every time a move is made.  
@@ -28,9 +39,12 @@ class tic_tac_toe_board:
     """
     #scores of various board positions
     score_dict={}
+    board_len=3
     
     
-    def __init__(self,board=((0,0,0),(0,0,0),(0,0,0))):
+    def __init__(self,board=((Square.BLANK, Square.BLANK, Square.BLANK),
+                             (Square.BLANK, Square.BLANK, Square.BLANK),
+                             (Square.BLANK, Square.BLANK, Square.BLANK))):
         """
         Provide a board where 0 indicates an empty slot, and 1 and -1 indicate
         pieces on the board.  1 and -1 do not have any special meanings beyond
@@ -42,11 +56,11 @@ class tic_tac_toe_board:
         """
         what squares haven't filled up yet?
         """
-        return [(y,x) for (y,x) in itertools.product(range(3),range(3)) if self.board[y][x]==0]
+        return [(y,x) for (y,x) in itertools.product(range(self.board_len),range(self.board_len)) if self.board[y][x]==Square.BLANK]
 
     def fails_boundaries(self,(input_row,input_col)):
         rtnval=False
-        legal_idx_range=set(range(0,3))
+        legal_idx_range=set(range(0,self.board_len))
         coordinates_within_bounds=input_row in legal_idx_range and input_col in legal_idx_range
         return not coordinates_within_bounds
     
@@ -60,7 +74,7 @@ class tic_tac_toe_board:
         board_as_list=map(lambda row:list(row),self.board)
         board_as_list[move_y][move_x]=player
         new_board=tuple(map(lambda row:tuple(row),board_as_list))
-        return tic_tac_toe_board(new_board)
+        return TicTacToeBoard(new_board)
     def grid_path_generator(self,y_step,x_step,starting_posn):
         """
         produces a generator which yields a sequence of positions on the board.
@@ -97,9 +111,9 @@ class tic_tac_toe_board:
         generate all of the possible win-paths, and walk down each one,
         checking for a winner
         """
-        col_paths=[self.grid_path_generator(1,0,(0,x)) for x in range(3)]
-        row_paths=[self.grid_path_generator(0,1,(y,0)) for y in range(3)]
-        diagonal_paths=[self.grid_path_generator(1,1,(0,0)),self.grid_path_generator(-1,1,(2,0))]
+        col_paths=[self.grid_path_generator(1,0,(0,x)) for x in range(self.board_len)]
+        row_paths=[self.grid_path_generator(0,1,(y,0)) for y in range(self.board_len)]
+        diagonal_paths=[self.grid_path_generator(1,1,(0,0)),self.grid_path_generator(-1,1,(self.board_len-1,0))]
         winner=0
         for p in col_paths+row_paths+diagonal_paths:
             p_winner=self.winner_on_path(p)
@@ -117,7 +131,7 @@ class tic_tac_toe_board:
         resulting board be?
         """
         result_board=self.commit_move(move,player)
-        return result_board.score_posn(self.other_player(player))
+        return result_board.score_posn(Square.other_player(player))
 
     def best_next_move(self,player):
         """
@@ -165,12 +179,17 @@ class tic_tac_toe_board:
             #so, find the next move yielding maximal (or minimal) score
             cur_remaining_moves=self.remaining_moves()
             num_remaining_moves=len(cur_remaining_moves)
-            goal_fn=self.player_goal_fn(player)
     
             #suppose we are the score-minimizing player.
             #we want to figure out how small we can make
             #the score of the resulting move
-            rtn_score=goal_fn(map(self.score_move,
+            if player==Square.AI:
+                rtn_score=max(map(self.score_move,
+                                zip(cur_remaining_moves,
+                                    (player,)*num_remaining_moves)))
+            else:
+                #player==Square.HUMAN
+                rtn_score=min(map(self.score_move,
                                 zip(cur_remaining_moves,
                                     (player,)*num_remaining_moves)))
             self.record_score(player,rtn_score)
@@ -179,24 +198,6 @@ class tic_tac_toe_board:
         rtn_str="\n".join(["|"+"|".join([num_to_avatar(n) for n in row])+"|" for row in self.board])
         return rtn_str
 
-    def player_goal_fn(self,player):
-        """
-        As described above, one player wants to maximize the score
-        on the grid, and the other player wants to minimize the score.
-        so, player 1's "goal" corresponds to the function max
-        """
-        assert player in [-1,1]
-        if player==1:
-            return max
-        else:
-            return min
-
-    def other_player(self,player):
-        #...
-        return player * -1
-
-
-    
 
 
 def num_to_avatar(n):
@@ -250,20 +251,19 @@ def run_game():
     print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXED ROW,COLUMN format."
     print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
     print "this is NOT the same as the x,y coordinates of your childhood\n\n"
-    cur_board=tic_tac_toe_board()
+    cur_board=TicTacToeBoard()
     cur_player=1
 
     #Pick randomly whether the human player will go first.  If the player goes first
     #the player will play as "O" and try to maximize score.  If player goes second,
     #the player will play as "X" and try to minimize score.
-    human_team=1 if random.random() > .5 else -1
-    computer_team=cur_board.other_player(human_team)
+    cur_player = 1 if random.random() > .5 else -1
     print ("we have chosen randomly for you."+
-          "you will move {0} and play as {1}.".format("first" if human_team==1 else "second",
-                                                      "\""+str(num_to_avatar(human_team)+"\"")))
+          "you will move {0} and play as {1}.".format("first" if Square.HUMAN==cur_player else "second",
+                                                      "\""+str(num_to_avatar(Square.HUMAN)+"\"")))
     while not cur_board.winner_on_board() and len(cur_board.remaining_moves())>0:
         #main game loop....
-        if cur_player==human_team:
+        if cur_player==Square.HUMAN:
             move=prompt_valid_move(cur_board)
         else:
             move=cur_board.best_next_move(cur_player)
@@ -271,51 +271,49 @@ def run_game():
         cur_board=cur_board.commit_move(move,cur_player)
         print cur_board
         print "\n"
-        cur_player=cur_board.other_player(cur_player)                                                                                       
+        cur_player=Square.other_player(cur_player)                                                                                       
 
-    if cur_board.winner_on_board()==computer_team:
+    if cur_board.winner_on_board()==Square.AI:
         print "i win!"
     else:
         print "we tied.  you must be brilliant"
           
 def run_tests():
-    test_board_0=tic_tac_toe_board((( 1, 0, 0),
-                                    ( 0, 1, 0),
-                                    ( 0, 0, 1)))
-    test_board_1=tic_tac_toe_board((( 1, 1, 1),
-                                    ( 0,-1, 0),
-                                    (-1, 0, 0)))
-    test_board_2=tic_tac_toe_board((( 0,-1, 0),
-                                    ( 0,-1, 0),
-                                    ( 0,-1, 0)))
-    test_board_3=tic_tac_toe_board((( 0, 1, 0),
-                                    ( 0, 0, 0),
-                                    ( 0,-1, 0)))
-    test_board_4=tic_tac_toe_board(((-1,-1, 1),
-                                    ( 1, 0, 0),
-                                    (-1, 1, 0)))
-    test_board_5=tic_tac_toe_board(((-1,-1, 1),
-                                    ( 1, 1, 0),
-                                    (-1,-1, 1)))
-    test_board_6=tic_tac_toe_board((( 0, 0, 0),
-                                    ( 0, 0, 0),
-                                    ( 0,-1, 0)))
-    test_board_6=tic_tac_toe_board((( 1, 0, 0),
-                                    ( 0, 0, 0),
-                                    ( 0, 0,-1)))
-    print "tests starting"
+    test_board_0=TicTacToeBoard((( 1, 0, 0),
+                                 ( 0, 1, 0),
+                                 ( 0, 0, 1)))
+    test_board_1=TicTacToeBoard((( 1, 1, 1),
+                                 ( 0,-1, 0),
+                                 (-1, 0, 0)))
+    test_board_2=TicTacToeBoard((( 0,-1, 0),
+                                 ( 0,-1, 0),
+                                 ( 0,-1, 0)))
+    test_board_3=TicTacToeBoard((( 0, 1, 0),
+                                 ( 0, 0, 0),
+                                 ( 0,-1, 0)))
+    test_board_4=TicTacToeBoard(((-1,-1, 1),
+                                 ( 1, 0, 0),
+                                 (-1, 1, 0)))
+    test_board_5=TicTacToeBoard(((-1,-1, 1),
+                                 ( 1, 1, 0),
+                                 (-1,-1, 1)))
+    test_board_6=TicTacToeBoard((( 0, 0, 0),
+                                 ( 0, 0, 0),
+                                 ( 0,-1, 0)))
+    test_board_6=TicTacToeBoard((( 1, 0, 0),
+                                 ( 0, 0, 0),
+                                 ( 0, 0,-1)))
     assert (test_board_6.winner_on_board() == 0)
     assert (test_board_1.winner_on_board() == 1)
     assert (test_board_4.best_next_move(1) == (1,2))
     assert (test_board_4.best_next_move(-1) == (1,1))
     assert (test_board_6.score_posn(1) == 1)
     assert (test_board_6.score_posn(-1) == -1)
-    print "tests over"
 
 
 if __name__=="__main__":
     empty_board =(( 0, 0, 0),
                   ( 0, 0, 0),
                   ( 0, 0, 0))
-    #run_tests()
+    run_tests()
     run_game()
