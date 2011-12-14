@@ -4,7 +4,24 @@ import random
 
 
 class AIPlayer:
+    """
+    This encapsulates a rational-thinking AI opponent.
 
+    In order to understand what the opponent is thinking, please wach this video:
+
+    http://www.youtube.com/watch?v=o3Z3oAoKhDA
+
+    or read this article:
+
+    http://en.wikipedia.org/wiki/Minimax#Minimax_algorithm_with_alternate_moves
+
+    The AI player is attempting to *maximize* terminal score, and understands that the human
+    attempts to *minimize* terminal score.
+
+    The only class-level variable here is a dictionary where we save off the scores of
+    individual situations.  This is class-level because the information contained within
+    is always true.  
+    """
     #scores of various board positions
     score_dict={}
 
@@ -77,6 +94,11 @@ class AIPlayer:
 
 
 class PlayerTypes:
+    """
+    This is analogous to an "enum" from .NET world.
+    This allows us to interpret the meanings of the integers
+    within the TicTacToeBoard.
+    """
     HUMAN=-1
     AI=1
     BLANK=0
@@ -102,23 +124,9 @@ class TicTacToeBoard:
     This models a snapshot of a tic tac toe board.  The indended use is for the
     consumer to build a new board every time a move is made.  
     
-    Consequently, the only object-level variable is a 2-D array, whose elements
-    correspond to the pieces on the board.  A square containing 0 corresponds to a
-    physical square with no pieces on it.  A square containing a 1 or -1 corresponds
-    to a square with a piece on it.  
-    
-    1 and -1 have special meanings.  First, a square with "1" in it will print to an "O"
-    and a square with "-1" in it will print to an "X".  Also, the player corresponding to "1"
-    is trying to maximize the terminal score, and the other player is trying to minimize terminal
-    score.  In order to understand what I mean by "maximize terminal score,", please watch
-    the following youtube video:
-
-    http://www.youtube.com/watch?v=o3Z3oAoKhDA
-
-    The only class-level variable here is a dictionary where we save off the scores of
-    individual situations.  This is class-level because the information contained within
-    is true of every board.
-
+    Consequently, the only object-level variable is a 2-D tuple, whose elements
+    correspond to the pieces on the board.  This tuple is full of integers, whose
+    meanings are interpreted via the PlayerTypes class.
     """
     board_len=3
     
