@@ -63,7 +63,7 @@ def run_game():
         cur_board=cur_board.commit_move(move,cur_player)
         print cur_board
         print "\n"
-        cur_player=PlayerTypes.other_player(cur_player)                                                                                       
+        cur_player=PlayerTypes.opposing_player(cur_player)                                                                                       
 
     if cur_board.winner_on_board()==PlayerTypes.AI:
         print "i win!"

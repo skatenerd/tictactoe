@@ -31,7 +31,7 @@ class AIPlayer:
         resulting board be?
         """
         result_board=board.commit_move(move,player)
-        return self.score_posn(result_board, PlayerTypes.other_player(player))
+        return self.score_posn(result_board, PlayerTypes.opposing_player(player))
 
     def best_next_move(self,board,player):
         """
@@ -105,7 +105,8 @@ class PlayerTypes:
     #def __init__(self,contents=BLANK):
         #self.contents=contents
     @staticmethod
-    def other_player(p):
+    def opposing_player(p):
+        assert p != 0
         return p*-1
     @staticmethod
     def player_to_avatar(n):
