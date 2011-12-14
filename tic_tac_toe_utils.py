@@ -2,7 +2,81 @@ import re
 import itertools
 import random
 
-class Square:
+
+class AIPlayer:
+
+    #scores of various board positions
+    score_dict={}
+
+    def score_move(self,board,(move,player)):
+        """
+        if "player" committed "move", what would the score of the
+        resulting board be?
+        """
+        result_board=board.commit_move(move,player)
+        return self.score_posn(result_board, PlayerTypes.other_player(player))
+
+    def best_next_move(self,board,player):
+        """
+        This is used for the A-I part of the game.  It looks for a move whose
+        resulting board will have an optimal score.  
+        TODO: pick randomly among optimal moves, to give game some human feel.
+        """
+        cur_posn_score=self.score_posn(board,player)
+        for m in board.remaining_moves():
+            if self.score_move(board,(m,player))==cur_posn_score:
+                return m
+    
+    def record_score(self,board,player,score):
+        """
+        this is just a wrapper to make the code read more like english
+        and to handle assertion-checking
+        """
+        #extract the hashable property of the board object
+        board_tuple=board.board
+        if (board_tuple,player) in self.score_dict:
+            assert self.score_dict[(board_tuple,player)]==score
+        else:
+            self.score_dict[(board_tuple,player)]=score
+
+    def score_posn(self,board,player):
+        """
+        What is the "score" of the current board?
+        see above for an explanation of what "score" means
+        Note that we are using a dictionary object to avoid extra work
+        """
+        cur_winner=board.winner_on_board()
+        if cur_winner!=0:
+            #first obvious check - is the game over?
+            self.record_score(board,player,cur_winner)
+            return cur_winner
+        elif len(board.remaining_moves())==0:
+            #nobody can move, and there is no winner.  stale mate.
+            return 0
+        elif len(board.remaining_moves()) >8:
+            #you can't lose after two moves.....
+            return 0
+        elif (board.board,player) in self.score_dict:
+            #we've already memorized this into the score dictionary!
+            return self.score_dict[(board.board,player)]
+        else:
+            #all of the obvious checks have yielded no results.
+            #so, find the next move yielding maximal (or minimal) score
+            cur_remaining_moves=board.remaining_moves()
+    
+            #suppose we are the score-minimizing player.
+            #we want to figure out how small we can make
+            #the score of the resulting move
+            if player==PlayerTypes.AI:
+                 rtn_score=max([self.score_move(board,(move,player)) for move in cur_remaining_moves])
+            else:
+                 rtn_score=min([self.score_move(board,(move,player)) for move in cur_remaining_moves])
+            self.record_score(board,player,rtn_score)
+            return rtn_score
+
+
+
+class PlayerTypes:
     HUMAN=-1
     AI=1
     BLANK=0
@@ -12,7 +86,7 @@ class Square:
     def other_player(p):
         return p*-1
     @staticmethod
-    def num_to_avatar(n):
+    def player_to_avatar(n):
         if n==-1:
             return "X"
         elif n==0:
@@ -46,18 +120,16 @@ class TicTacToeBoard:
     is true of every board.
 
     """
-    #scores of various board positions
-    score_dict={}
     board_len=3
     
     
-    def __init__(self,board=((Square.BLANK, Square.BLANK, Square.BLANK),
-                             (Square.BLANK, Square.BLANK, Square.BLANK),
-                             (Square.BLANK, Square.BLANK, Square.BLANK))):
+    def __init__(self,board=((PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK),
+                             (PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK),
+                             (PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK))):
         """
         Provide a board where 0 indicates an empty slot, and 1 and -1 indicate
         pieces on the board.  1 and -1 do not have any special meanings beyond
-        what they are used for in "num_to_avatar()", where they inform how the board is printed.
+        what they are used for in "player_to_avatar()", where they inform how the board is printed.
         """
         self.board=board
 
@@ -65,7 +137,7 @@ class TicTacToeBoard:
         """
         what squares haven't filled up yet?
         """
-        return [(y,x) for (y,x) in itertools.product(range(self.board_len),range(self.board_len)) if self.board[y][x]==Square.BLANK]
+        return [(y,x) for (y,x) in itertools.product(range(self.board_len),range(self.board_len)) if self.board[y][x]==PlayerTypes.BLANK]
 
     def fails_boundaries(self,(input_row,input_col)):
         rtnval=False
@@ -102,17 +174,14 @@ class TicTacToeBoard:
         lives on this path.  we require that all three numbers are
         equal and nonzero.
         """
-        (frst_y,frst_x)=path.next()
-        frst_val=self.board[frst_y][frst_x]
-        path_residents_identical=True
-        for (cur_y,cur_x) in path:
-            cur_val=self.board[cur_y][cur_x]
-            if cur_val!=frst_val:
-                path_residents_identical=False
-        if path_residents_identical and frst_val != 0:
-            return frst_val
+        values_on_path=[self.board[y][x] for (y,x) in path]
+        if all([v==PlayerTypes.AI for v in values_on_path]):
+            return PlayerTypes.AI
+        elif all([v==PlayerTypes.HUMAN for v in values_on_path]):
+            return PlayerTypes.HUMAN
         else:
-            return 0
+            return PlayerTypes.BLANK
+
     
     def winner_on_board(self):
         """
@@ -134,77 +203,8 @@ class TicTacToeBoard:
     def is_occupied_square(self,(input_row,input_col)):
         return (self.board[input_row][input_col]!=0)
 
-    def score_move(self,(move,player)):
-        """
-        if "player" committed "move", what would the score of the
-        resulting board be?
-        """
-        result_board=self.commit_move(move,player)
-        return result_board.score_posn(Square.other_player(player))
-
-    def best_next_move(self,player):
-        """
-        This is used for the A-I part of the game.  It looks for a move whose
-        resulting board will have an optimal score.  
-        TODO: pick randomly among optimal moves, to give game some human feel.
-        """
-        cur_posn_score=self.score_posn(player)
-        for m in self.remaining_moves():
-            if self.score_move((m,player))==cur_posn_score:
-                return m
-    
-    def record_score(self,player,score):
-        """
-        this is just a wrapper to make the code read more like english
-        and to handle assertion-checking
-        """
-        if (self.board,player) in self.score_dict:
-            assert self.score_dict[(self.board,player)]==score
-        else:
-            self.score_dict[(self.board,player)]=score
-    
-    def score_posn(self,player):
-        """
-        What is the "score" of the current board?
-        see above for an explanation of what "score" means
-        Note that we are using a dictionary object to avoid extra work
-        """
-        cur_winner=self.winner_on_board()
-        if cur_winner!=0:
-            #first obvious check - is the game over?
-            self.record_score(player,cur_winner)
-            return cur_winner
-        elif len(self.remaining_moves())==0:
-            #nobody can move, and there is no winner.  stale mate.
-            return 0
-        elif len(self.remaining_moves()) >8:
-            #you can't lose after two moves.....
-            return 0
-        elif (self.board,player) in self.score_dict:
-            #we've already memorized this into the score dictionary!
-            return self.score_dict[(self.board,player)]
-        else:
-            #all of the obvious checks have yielded no results.
-            #so, find the next move yielding maximal (or minimal) score
-            cur_remaining_moves=self.remaining_moves()
-            num_remaining_moves=len(cur_remaining_moves)
-    
-            #suppose we are the score-minimizing player.
-            #we want to figure out how small we can make
-            #the score of the resulting move
-            if player==Square.AI:
-                rtn_score=max(map(self.score_move,
-                                zip(cur_remaining_moves,
-                                    (player,)*num_remaining_moves)))
-            else:
-                #player==Square.HUMAN
-                rtn_score=min(map(self.score_move,
-                                zip(cur_remaining_moves,
-                                    (player,)*num_remaining_moves)))
-            self.record_score(player,rtn_score)
-            return rtn_score
     def __str__(self):
-        rtn_str="\n".join(["|"+"|".join([Square.num_to_avatar(n) for n in row])+"|" for row in self.board])
+        rtn_str="\n".join(["|"+"|".join([PlayerTypes.player_to_avatar(n) for n in row])+"|" for row in self.board])
         return rtn_str
           
 def run_tests():
@@ -232,12 +232,13 @@ def run_tests():
     test_board_6=TicTacToeBoard((( 1, 0, 0),
                                  ( 0, 0, 0),
                                  ( 0, 0,-1)))
+    ai_player=AIPlayer()
     assert (test_board_6.winner_on_board() == 0)
     assert (test_board_1.winner_on_board() == 1)
-    assert (test_board_4.best_next_move(1) == (1,2))
-    assert (test_board_4.best_next_move(-1) == (1,1))
-    assert (test_board_6.score_posn(1) == 1)
-    assert (test_board_6.score_posn(-1) == -1)
+    assert (ai_player.best_next_move(test_board_4,1) == (1,2))
+    assert (ai_player.best_next_move(test_board_4,-1) == (1,1))
+    assert (ai_player.score_posn(test_board_6,1) == 1)
+    assert (ai_player.score_posn(test_board_6,-1) == -1)
 
 
 if __name__=="__main__":
