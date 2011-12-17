@@ -70,7 +70,7 @@ class AIPlayer:
         elif len(board.remaining_moves())==0:
             #nobody can move, and there is no winner.  stale mate.
             return 0
-        elif len(board.remaining_moves()) >8:
+        elif len(board.remaining_moves()) >=((TicTacToeBoard.board_len*TicTacToeBoard.board_len)-1):
             #you can't lose after two moves.....
             return 0
         elif (board.board,player) in self.score_dict:
@@ -85,11 +85,34 @@ class AIPlayer:
             #we want to figure out how small we can make
             #the score of the resulting move
             if player==PlayerTypes.AI:
-                 rtn_score=max([self.score_move(board,(move,player)) for move in cur_remaining_moves])
+                 rtn_score=self.find_maximal_score((self.score_move(board,(move,player)) for move in cur_remaining_moves))
             else:
-                 rtn_score=min([self.score_move(board,(move,player)) for move in cur_remaining_moves])
+                 rtn_score=self.find_minimal_score((self.score_move(board,(move,player)) for move in cur_remaining_moves))
             self.record_score(board,player,rtn_score)
             return rtn_score
+
+    def find_maximal_score(self,scores):
+        rtnval = -1
+        for score in scores:
+            if score==1:
+                rtnval = 1 
+                break
+            else:
+                rtnval=max(rtnval,score)
+        return rtnval
+
+    def find_minimal_score(self,scores):
+        rtnval = 1
+        for score in scores:
+            if score==-1:
+                rtnval = -1
+                break
+            else:
+                rtnval=min(rtnval,score)
+        return rtnval
+
+                
+
 
 
 
@@ -132,15 +155,18 @@ class TicTacToeBoard:
     board_len=3
     
     
-    def __init__(self,board=((PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK),
-                             (PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK),
-                             (PlayerTypes.BLANK, PlayerTypes.BLANK, PlayerTypes.BLANK))):
+    def __init__(self,board=None):
         """
         Provide a board where 0 indicates an empty slot, and 1 and -1 indicate
         pieces on the board.  1 and -1 do not have any special meanings beyond
         what they are used for in "player_to_avatar()", where they inform how the board is printed.
         """
+        board=board if board != None else self.default_board()
         self.board=board
+
+    def default_board(self):
+        default_row=tuple([0]*self.board_len)
+        return tuple([default_row]*self.board_len)
 
     def remaining_moves(self):
         """

@@ -36,23 +36,20 @@ def prompt_valid_move(board):
             valid_move=True
     return move
 
+def str_to_bool(v):
+    return v.lower().rstrip() in ("yes", "true", "t", "1","y","t","")
 
+def prompt_first_player():
+    human_first=str_to_bool(raw_input("Would you like to go first? [default yes]"))
+    if human_first:
+        return PlayerTypes.HUMAN
+    else:
+        return PlayerTypes.AI
 
-def run_game():
-    print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXED ROW,COLUMN format."
-    print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
-    print "this is NOT the same as the x,y coordinates of your childhood\n\n"
+def run_game(starting_player):
     cur_board=TicTacToeBoard()
     ai_player=AIPlayer()
-    cur_player=1
-
-    #Pick randomly whether the human player will go first.  If the player goes first
-    #the player will play as "O" and try to maximize score.  If player goes second,
-    #the player will play as "X" and try to minimize score.
-    cur_player = 1 if random.random() > .5 else -1
-    print ("we have chosen randomly for you."+
-          "you will move {0} and play as {1}.".format("first" if PlayerTypes.HUMAN==cur_player else "second",
-                                                      "\""+str(PlayerTypes.player_to_avatar(PlayerTypes.HUMAN)+"\"")))
+    cur_player=starting_player
     while not cur_board.winner_on_board() and len(cur_board.remaining_moves())>0:
         #main game loop....
         if cur_player==PlayerTypes.HUMAN:
@@ -64,11 +61,25 @@ def run_game():
         print cur_board
         print "\n"
         cur_player=PlayerTypes.opposing_player(cur_player)                                                                                       
+    return cur_board.winner_on_board()
 
-    if cur_board.winner_on_board()==PlayerTypes.AI:
+
+if __name__=="__main__":
+    print "\n\n\nwelcome.  you will enter your moves in ZERO-INDEXED ROW,COLUMN format."
+    print "so, (0,0) is a valid move.  (2,0) means the lower left corner"
+    print "this is NOT the same as the x,y coordinates of your childhood\n\n"
+    cur_player=prompt_first_player()
+
+    #Pick randomly whether the human player will go first.  If the player goes first
+    #the player will play as "O" and try to maximize score.  If player goes second,
+    #the player will play as "X" and try to minimize score.
+    print ("we have chosen randomly for you."+
+          "you will move {0} and play as {1}.".format("first" if PlayerTypes.HUMAN==cur_player else "second",
+                                                      "\""+str(PlayerTypes.player_to_avatar(PlayerTypes.HUMAN)+"\"")))
+    outcome=run_game(cur_player)
+    if outcome==PlayerTypes.AI:
         print "i win!"
     else:
         print "we tied.  you must be brilliant"
+    
 
-if __name__=="__main__":
-    run_game()
