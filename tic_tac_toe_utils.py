@@ -84,10 +84,11 @@ class AIPlayer:
             #suppose we are the score-minimizing player.
             #we want to figure out how small we can make
             #the score of the resulting move
+            potential_next_scores=(self.score_move(board,(move,player)) for move in cur_remaining_moves)
             if player==PlayerTypes.AI:
-                 rtn_score=self.find_maximal_score((self.score_move(board,(move,player)) for move in cur_remaining_moves))
+                 rtn_score=self.find_maximal_score(potential_next_scores)
             else:
-                 rtn_score=self.find_minimal_score((self.score_move(board,(move,player)) for move in cur_remaining_moves))
+                 rtn_score=self.find_minimal_score(potential_next_scores)
             self.record_score(board,player,rtn_score)
             return rtn_score
 
