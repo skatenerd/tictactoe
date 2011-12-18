@@ -36,15 +36,28 @@ def prompt_valid_move(board):
             valid_move=True
     return move
 
-def str_to_bool(v):
-    return v.lower().rstrip() in ("yes", "true", "t", "1","y","t","")
+def str_to_bool(inp_to_parse,yes_responses,no_responses):
+    if inp_to_parse in yes_responses:
+        return True
+    elif inp_to_parse in no_responses:
+        return False
+    else:
+        raise Exception("Input not parseable to bool")
 
 def prompt_first_player():
-    human_first=str_to_bool(raw_input("Would you like to go first? [default yes]"))
+    yes_responses=set(("yes","true","1","y","t",""))
+    no_responses=set(("no", "n", "0", "false"))
+    valid_responses=yes_responses.union(no_responses)
+    current_input_attempt=raw_input("Would you like to go first? [default yes]\n")
+    while (current_input_attempt not in valid_responses):
+        current_input_attempt=raw_input("Could not parse previous response.  Try again\n")
+    human_first=str_to_bool(current_input_attempt,yes_responses,no_responses)
     if human_first:
         return PlayerTypes.HUMAN
     else:
         return PlayerTypes.AI
+
+
 
 def run_game(starting_player):
     cur_board=TicTacToeBoard()
@@ -73,9 +86,9 @@ if __name__=="__main__":
     #Pick randomly whether the human player will go first.  If the player goes first
     #the player will play as "O" and try to maximize score.  If player goes second,
     #the player will play as "X" and try to minimize score.
-    print ("we have chosen randomly for you."+
-          "you will move {0} and play as {1}.".format("first" if PlayerTypes.HUMAN==cur_player else "second",
-                                                      "\""+str(PlayerTypes.player_to_avatar(PlayerTypes.HUMAN)+"\"")))
+    print ("You have elected to move move {0} and play as {1}.".format(
+        "first" if PlayerTypes.HUMAN==cur_player else "second",
+        "\""+str(PlayerTypes.player_to_avatar(PlayerTypes.HUMAN)+"\"")))
     outcome=run_game(cur_player)
     if outcome==PlayerTypes.AI:
         print "i win!"

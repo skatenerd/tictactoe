@@ -111,11 +111,6 @@ class AIPlayer:
                 rtnval=min(rtnval,score)
         return rtnval
 
-                
-
-
-
-
 class PlayerTypes:
     """
     This is analogous to an "enum" from .NET world.
